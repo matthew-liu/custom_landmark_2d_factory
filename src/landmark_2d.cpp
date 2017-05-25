@@ -32,12 +32,12 @@ int main( int argc, char** argv ) {
     printf("position: %d, %d\n", it->x, it->y);
   }
 
-  // char const * image_window = "Source Image";
+  char const * image_window = "Source Image";
 
-  // namedWindow(image_window, CV_WINDOW_NORMAL);;
-  // resizeWindow(image_window, 600,600);
+  namedWindow(image_window, CV_WINDOW_NORMAL);
+  resizeWindow(image_window, 600,600);
 
-  // imshow( image_window, img );
+  imshow( image_window, img );
 
-  // waitKey(0);
+  waitKey(0);
 }
