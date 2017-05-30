@@ -194,3 +194,6 @@ include_directories(
 
 add_executable(landmark_2d src/landmark_2d.cpp)
 target_link_libraries(landmark_2d ${OpenCV_LIBS} ${catkin_LIBRARIES})
+
+add_executable(template_fetcher src/template_fetcher.cpp)
+target_link_libraries(template_fetcher ${OpenCV_LIBS} ${catkin_LIBRARIES})

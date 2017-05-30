@@ -68,7 +68,6 @@ bool matching(Mat& img, Mat& templ, list<Point>& lst) {
     }
   }
 
-  printf("**No matching for the template exist!**\n");
   return false;
 }
 
