@@ -25,15 +25,11 @@ int main( int argc, char** argv ) {
   ros::Publisher pub_instance = n.advertise<sensor_msgs::Image>("output_channel", 1000);
   pub = &pub_instance;
 
-  ros::Subscriber sub = n.subscribe("/head_mount_kinect/rgb/image_raw", 1000, matcher);
+  ros::Subscriber sub = n.subscribe("/head_mount_kinect/rgb/image_color", 5, matcher);
 
-  // wait ~3 secs for each image processing
-  ros::Rate loop_rate(0.3);
 
-  while (ros::ok()) {
-    ros::spinOnce();
-    loop_rate.sleep();
-  }
+  ros::spin();
+
 
   return 0;
 }
@@ -56,9 +52,8 @@ void matcher(const sensor_msgs::Image::ConstPtr& msg) {
     list<Point> lst;
     bool result = matching(cv_ptr->image, templ, lst);
 
-    if (!result) {
-      ROS_INFO("--No matching for the template exists in current scene--\n");
-      return;
+    if (result) {
+      // loop through the list...
     }
     
     // printf("--------------\n REPEAT Matched Points Info:\n\n");

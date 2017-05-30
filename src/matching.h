@@ -130,23 +130,11 @@ double matching_method(Mat& img, Mat& templ, list<Point>& matching) {
   for (list<Point>::iterator it = matching.begin(); it != matching.end(); it++) {
     printf("point intensity: %f, position: %d, %d\n", result.at<float>(*it), it->x, it->y);
 
-    rectangle( img, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 10, 8, 0 );
-    rectangle( result, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 10, 8, 0 );
+    rectangle( img, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 5, 8, 0 );
+    rectangle( result, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 5, 8, 0 );
   }
- 
-  // Create windows & show images
-  // char const * image_window = "Source Image";
-  // char const * result_window = "Result window";
+  printf("\n");
 
-  // namedWindow(image_window, CV_WINDOW_NORMAL);
-  // namedWindow(result_window, CV_WINDOW_NORMAL);
-  // resizeWindow(image_window, 600,600);
-  // resizeWindow(result_window, 600,600);
-
-  // imshow( image_window, img );
-  // imshow( result_window, result );
-
-  // waitKey(0);
   return maxVal;
 }
 
