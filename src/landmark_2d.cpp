@@ -1,10 +1,12 @@
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
+#include "custom_landmark_2d/Point.h"
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include "matching.h"
 
 ros::Publisher* pub;
+ros::Publisher* points_pub;
 Mat templ;
 
 void matcher(const sensor_msgs::Image::ConstPtr& msg);
@@ -22,10 +24,14 @@ int main( int argc, char** argv ) {
 
   ros::NodeHandle n;
 
-  ros::Publisher pub_instance = n.advertise<sensor_msgs::Image>("output_channel", 1000);
+  ros::Publisher pub_instance = n.advertise<sensor_msgs::Image>("image_output", 1000);
   pub = &pub_instance;
 
-  ros::Subscriber sub = n.subscribe("/head_mount_kinect/rgb/image_color", 5, matcher);
+  ros::Publisher points_pub_instance = n.advertise<custom_landmark_2d::Point>("points_output", 1000);
+  points_pub = &points_pub_instance;
+
+
+  ros::Subscriber sub = n.subscribe("/wide_stereo/right/image_color", 5, matcher);
 
 
   ros::spin();
@@ -53,15 +59,17 @@ void matcher(const sensor_msgs::Image::ConstPtr& msg) {
     bool result = matching(cv_ptr->image, templ, lst);
 
     if (result) {
-      // loop through the list...
+      custom_landmark_2d::Point point;
+      // loop through the list
+      for (list<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
+        point.x = it->x;
+        point.y = it->y;
+        point.width = x_dist;
+        point.height = y_dist;
+        points_pub->publish(point);
+      }
     }
     
-    // printf("--------------\n REPEAT Matched Points Info:\n\n");
-    // printf("coordinates: %d, %d\n", x_dist, y_dist);
-    // // display matched parts
-    // for (list<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
-    //   printf("position: %d, %d\n", it->x, it->y);
-    // }
 
     pub->publish(cv_ptr->toImageMsg());
   }
