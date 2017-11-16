@@ -103,11 +103,14 @@ generate_messages(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES custom_landmark_2d
-#  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  LIBRARIES 
+    matcher_2d
+    
+# CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
+# DEPENDS system_lib
 )
 
 ###########
@@ -118,6 +121,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 )
@@ -192,8 +196,16 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(landmark_2d src/landmark_2d.cpp)
-target_link_libraries(landmark_2d ${OpenCV_LIBS} ${catkin_LIBRARIES})
+add_library(matcher_2d src/matcher.cpp)
+add_dependencies(matcher_2d ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(matcher_2d ${catkin_LIBRARIES})
+
+add_executable(landmark_2d_demo src/landmark_2d_demo.cpp)
+target_link_libraries(landmark_2d_demo
+  matcher_2d
+  ${OpenCV_LIBS}
+  ${catkin_LIBRARIES}
+)
 
 add_executable(template_fetcher src/template_fetcher.cpp)
 target_link_libraries(template_fetcher ${OpenCV_LIBS} ${catkin_LIBRARIES})

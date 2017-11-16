@@ -3,15 +3,21 @@
 #include "custom_landmark_2d/Point.h"
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
-#include "matching.h"
+
+#include "custom_landmark_2d/matcher.h"
+
+using namespace std;
+using namespace cv;
 
 ros::Publisher* pub;
 ros::Publisher* points_pub;
 Mat templ;
+custom_landmark_2d::Matcher* matcher;
 
-void matcher(const sensor_msgs::Image::ConstPtr& msg);
+void demo(const sensor_msgs::Image::ConstPtr& msg);
 
 int main( int argc, char** argv ) {
+
   // Load template from stdin
   templ = imread( argv[1], 1 );
 
@@ -31,7 +37,7 @@ int main( int argc, char** argv ) {
   points_pub = &points_pub_instance;
 
 
-  ros::Subscriber sub = n.subscribe("/wide_stereo/right/image_color", 5, matcher);
+  ros::Subscriber sub = n.subscribe("/wide_stereo/right/image_color", 5, demo);
 
 
   ros::spin();
@@ -40,7 +46,7 @@ int main( int argc, char** argv ) {
   return 0;
 }
 
-void matcher(const sensor_msgs::Image::ConstPtr& msg) {
+void demo(const sensor_msgs::Image::ConstPtr& msg) {
   ROS_INFO("scene img received sucessfully");
 
   if (ros::ok()) {
@@ -56,7 +62,9 @@ void matcher(const sensor_msgs::Image::ConstPtr& msg) {
 
     // run matching on the image
     list<Point> lst;
-    bool result = matching(cv_ptr->image, templ, lst);
+    int width;
+    int height;
+    bool result = matcher->scale_match(cv_ptr->image, templ, lst, &width, &height);
 
     if (result) {
       custom_landmark_2d::Point point;
@@ -64,8 +72,8 @@ void matcher(const sensor_msgs::Image::ConstPtr& msg) {
       for (list<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
         point.x = it->x;
         point.y = it->y;
-        point.width = x_dist;
-        point.height = y_dist;
+        point.width = width;
+        point.height = height;
         points_pub->publish(point);
       }
     }
