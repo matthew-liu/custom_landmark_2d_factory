@@ -4,7 +4,7 @@ namespace custom_landmark_2d {
 
 class Matcher {
 
-	public:
+  public:
       int count_times; 		   // max #times allowed for resizing
       float raw_match_limit; // the threshold for BEST acceptable matching points
       float match_limit;     // the threshold for ALL acceptable matching points
@@ -15,7 +15,7 @@ class Matcher {
       	               std::list<cv::Point>& lst,
       				         int* width, int* height);
 
- 	private:
+  private:
       int match_method;
       int x_dist, y_dist;
       // performs a single match on the given scene & templ, returns the max match_score	
