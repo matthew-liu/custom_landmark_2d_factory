@@ -12,7 +12,7 @@ using namespace cv;
 ros::Publisher* pub;
 ros::Publisher* points_pub;
 Mat templ;
-custom_landmark_2d::Matcher* matcher;
+custom_landmark_2d::Matcher matcher;
 
 void demo(const sensor_msgs::Image::ConstPtr& msg);
 
@@ -37,7 +37,7 @@ int main( int argc, char** argv ) {
   points_pub = &points_pub_instance;
 
 
-  ros::Subscriber sub = n.subscribe("/wide_stereo/right/image_color", 5, demo);
+  ros::Subscriber sub = n.subscribe("/head_camera/rgb/image_raw", 5, demo);
 
 
   ros::spin();
@@ -64,7 +64,7 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
     list<Point> lst;
     int width;
     int height;
-    bool result = matcher->scale_match(cv_ptr->image, templ, lst, &width, &height);
+    bool result = matcher.scale_match(cv_ptr->image, templ, lst, &width, &height);
 
     if (result) {
       custom_landmark_2d::Point point;
@@ -75,6 +75,8 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
         point.width = width;
         point.height = height;
         points_pub->publish(point);
+        // annotates matched parts on scene
+        rectangle( cv_ptr->image, *it, Point( it->x + width , it->y + height ), Scalar(255, 255, 0), 5, 8, 0 );
       }
     }
     

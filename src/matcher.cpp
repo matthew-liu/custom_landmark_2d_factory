@@ -12,19 +12,23 @@ using namespace cv;
 namespace custom_landmark_2d {
 
 Matcher::Matcher() : match_method(CV_TM_CCOEFF_NORMED),
-					 counter(3),
-					 raw_match_limit(0.7),
-					 match_limit(0.63) {}
+					 count_times(3),
+					 raw_match_limit(0.75),
+					 match_limit(0.68) {}
 
-bool Matcher::scale_match(cv::Mat& scene, const cv::Mat& templ,
+bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
                           std::list<cv::Point>& lst,
 				 		  int* width, int* height) {
+	
+	int counter = count_times;
 
+	printf("---trial origin---\n");
 	double unscaled_value = match(scene, templ, lst);
 
 	// success without rescaling
 	if (unscaled_value > raw_match_limit) {
-		*width, *height = x_dist, y_dist;
+		*width = x_dist;
+		*height = y_dist;
 		return true;
 	}
 
@@ -34,24 +38,28 @@ bool Matcher::scale_match(cv::Mat& scene, const cv::Mat& templ,
 	double factor = 0.9;
 
 	// scale down
+	printf("---trial downsize 1---\n");
 	resize(templ, scaled_templ, Size(), factor, factor, INTER_AREA);
 	value = match(scene, scaled_templ, lst);
 
 	if (value > raw_match_limit) {
-		*width, *height = x_dist, y_dist;
+		*width = x_dist;
+		*height = y_dist;
 		return true;
 	}
 
 	if (value > unscaled_value) {
+		counter--; // already scaled down once
 		while (counter > 0) {
 			factor -= 0.1; // 0.8-
 			counter--;
-
+			printf("---trial downsize %d---\n", count_times - counter);
 			resize(templ, scaled_templ, Size(), factor, factor, INTER_AREA);
 			value = match(scene, scaled_templ, lst);
 
 			if (value > raw_match_limit) {
-				*width, *height = x_dist, y_dist;
+				*width = x_dist;
+				*height = y_dist;
 				return true;
 			}
 		}
@@ -61,12 +69,13 @@ bool Matcher::scale_match(cv::Mat& scene, const cv::Mat& templ,
   		while (counter > 0) {
   			factor += 0.1; // 1.1+
 		    counter--;
-
+		    printf("---trial upsize %d---\n", count_times - counter);
 		    resize(templ, scaled_templ, Size(), factor, factor, INTER_LINEAR);
 		    value = match(scene, scaled_templ, lst);
 
 		    if (value > raw_match_limit) {
-		    	*width, *height = x_dist, y_dist;
+				*width = x_dist;
+				*height = y_dist;
 		    	return true;
 		    }
   		}
@@ -76,17 +85,16 @@ bool Matcher::scale_match(cv::Mat& scene, const cv::Mat& templ,
 }
 
 // performs a single match on the given scene & templ, returns the max match_score	
-double Matcher::match(Mat& scene, const Mat& templ, list<cv::Point>& matching) {
+double Matcher::match(const Mat& scene, const Mat& templ, list<cv::Point>& matching) {
 
-	y_dist = (int) templ.rows;
 	x_dist = (int) templ.cols;
+	y_dist = (int) templ.rows;
 
-	printf("\n--------\n");
 	printf("x_dist: %d, y_dist: %d\n\n", x_dist, y_dist);
 
 	Mat result; // the result matrix
 
-	int result_cols =  scene.cols - templ.cols + 1;
+	int result_cols = scene.cols - templ.cols + 1;
 	int result_rows = scene.rows - templ.rows + 1;
 
 	result.create(result_rows, result_cols, CV_32FC1);
@@ -127,13 +135,9 @@ double Matcher::match(Mat& scene, const Mat& templ, list<cv::Point>& matching) {
 
 	printf("--------------\nMatched Points Info:\n\n");
 
-
 	// annotates matched parts on scene
 	for (list<Point>::iterator it = matching.begin(); it != matching.end(); it++) {
 		printf("point intensity: %f, position: %d, %d\n", result.at<float>(*it), it->x, it->y);
-
-		rectangle( scene, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 5, 8, 0 );
-		rectangle( result, *it, Point( it->x + templ.cols , it->y + templ.rows ), Scalar(255, 255, 0), 5, 8, 0 );
 	}
 	printf("\n");
 

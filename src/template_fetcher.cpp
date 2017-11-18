@@ -16,7 +16,7 @@ int main( int argc, char** argv ) {
 
   ros::NodeHandle n;
 
-  ros::Subscriber sub = n.subscribe("/wide_stereo/right/image_color", 5, fetcher);
+  ros::Subscriber sub = n.subscribe("/head_camera/rgb/image_raw", 5, fetcher);
 
 
    ros::spin();
