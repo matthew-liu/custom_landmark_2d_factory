@@ -5,6 +5,8 @@ project(custom_landmark_2d)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  pcl_ros
+  rosbag  
   cv_bridge
   image_transport
   roscpp
@@ -209,3 +211,9 @@ target_link_libraries(landmark_2d_demo
 
 add_executable(template_fetcher src/template_fetcher.cpp)
 target_link_libraries(template_fetcher ${OpenCV_LIBS} ${catkin_LIBRARIES})
+
+add_executable(save_2d_images_main src/save_2d_images_main.cpp)
+add_dependencies(save_2d_images_main ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(save_2d_images_main
+   ${catkin_LIBRARIES}
+)
