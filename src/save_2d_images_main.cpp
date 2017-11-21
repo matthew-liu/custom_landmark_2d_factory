@@ -26,7 +26,7 @@ void callback(const ImageConstPtr& rgb, const ImageConstPtr& depth, std::string&
   bag.open(filename, rosbag::bagmode::Write);
   bag.write("/head_camera/rgb/image_raw", ros::Time::now(), rgb);
   bag.write("/head_camera/depth_registered/image_raw", ros::Time::now(), depth);
-  bag.write("/head_camera/rgb/camear_info", ros::Time::now(), camera_info);
+  bag.write("/head_camera/rgb/camera_info", ros::Time::now(), camera_info);
   bag.close();
 
   ros::shutdown(); 
