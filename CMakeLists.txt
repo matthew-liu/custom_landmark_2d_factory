@@ -5,6 +5,7 @@ project(custom_landmark_2d)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  image_geometry 
   pcl_ros
   rosbag  
   cv_bridge
@@ -110,6 +111,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES 
     matcher_2d
+    rgbd_pointcloud
     
 # CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
 # DEPENDS system_lib
@@ -202,6 +204,10 @@ add_library(matcher_2d src/matcher.cpp)
 add_dependencies(matcher_2d ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(matcher_2d ${catkin_LIBRARIES})
 
+add_library(rgbd_pointcloud src/rgbd_pointcloud.cpp)
+add_dependencies(rgbd_pointcloud ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rgbd_pointcloud ${catkin_LIBRARIES})
+
 add_executable(landmark_2d_demo src/landmark_2d_demo.cpp)
 target_link_libraries(landmark_2d_demo
   matcher_2d
@@ -215,5 +221,12 @@ target_link_libraries(template_fetcher ${OpenCV_LIBS} ${catkin_LIBRARIES})
 add_executable(save_2d_images_main src/save_2d_images_main.cpp)
 add_dependencies(save_2d_images_main ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(save_2d_images_main
+   ${catkin_LIBRARIES}
+)
+
+add_executable(pointcloud_demo src/pointcloud_demo.cpp)
+add_dependencies(pointcloud_demo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(pointcloud_demo
+   rgbd_pointcloud
    ${catkin_LIBRARIES}
 )
