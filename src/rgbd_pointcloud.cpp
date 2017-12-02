@@ -5,7 +5,7 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <stdio.h>
 
-#include "custom_landmark_2d/rgbd_pointcloud.h"
+#include <custom_landmark_2d/rgbd_pointcloud.h>
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -18,16 +18,16 @@ RgbdPointCloud::RgbdPointCloud(const CameraInfoConstPtr& camera_info) {
 	cam_model.fromCameraInfo(camera_info);
 };
 
-PointCloudC::Ptr RgbdPointCloud::to_pointcloud(const cv::Mat& rgb, const cv::Mat& depth) {
-
-	PointCloudC::Ptr cloud(new PointCloudC());
+bool RgbdPointCloud::to_pointcloud(const cv::Mat& rgb, const cv::Mat& depth, PointCloudC::Ptr cloud) {
 
 	printf("CameraInfo frame: %s\n", cam_model.tfFrame().c_str());
 
 	if (rgb.cols != depth.cols || rgb.rows != depth.rows) {
 		printf("ERROR: depth image dimension doesn't match rgb image");
-		return cloud;
+		return false;
 	}
+
+	cloud->clear();
 
 	for( int i = 0; i < depth.rows; i++) {
 		for ( int j = 0; j < depth.cols; j++) {
@@ -59,7 +59,7 @@ PointCloudC::Ptr RgbdPointCloud::to_pointcloud(const cv::Mat& rgb, const cv::Mat
 	cloud->width = (int) cloud->points.size();
 	cloud->height = 1;
 
-	return cloud;
+	return true;
 }
 
 }

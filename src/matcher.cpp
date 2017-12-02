@@ -1,6 +1,12 @@
-#include "custom_landmark_2d/matcher.h"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include <custom_landmark_2d/matcher.h>
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <sensor_msgs/CameraInfo.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <image_geometry/pinhole_camera_model.h>
+
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +15,9 @@
 using namespace std;
 using namespace cv;
 
+typedef pcl::PointXYZRGB PointC;
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
+
 namespace custom_landmark_2d {
 
 Matcher::Matcher() : match_method(CV_TM_CCOEFF_NORMED),
@@ -16,14 +25,92 @@ Matcher::Matcher() : match_method(CV_TM_CCOEFF_NORMED),
 					 raw_match_limit(0.75),
 					 match_limit(0.68) {}
 
-bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
-                          std::list<cv::Point>& lst,
-				 		  int* width, int* height) {
+Matcher::Matcher(const Mat& input_templ, const sensor_msgs::CameraInfoConstPtr& camera_info) : 
+					 match_method(CV_TM_CCOEFF_NORMED),
+					 count_times(3),
+					 raw_match_limit(0.75),
+					 match_limit(0.68),
+					 templ(input_templ) {
+
+	cam_model.fromCameraInfo(camera_info);
+}
+
+void Matcher::set_template(const cv::Mat& input_templ) {
+	templ = input_templ;
+}
+
+void Matcher::set_camera_info(const sensor_msgs::CameraInfoConstPtr& camera_info) {
+	cam_model.fromCameraInfo(camera_info);
+}
+
+bool Matcher::match_pointcloud(const cv::Mat& rgb, const cv::Mat& depth, PointCloudC::Ptr cloud) {
+
+	printf("CameraInfo frame: %s\n", cam_model.tfFrame().c_str());
+
+	if (rgb.cols != depth.cols || rgb.rows != depth.rows) {
+		printf("ERROR: depth image dimension doesn't match rgb image");
+		return false;
+	}
+
+	cloud->clear();
+
+	list<Point> lst;
+	int width;
+    int height;
+
+    if (!match(rgb, lst, &width, &height)) return false; // no match found
+ 
+
+	for( int i = 0; i < depth.rows; i++) {
+		for ( int j = 0; j < depth.cols; j++) {
+			float dist = depth.at<float>(i, j);
+			if (!isnan(dist)) {
+				// check if within any 2-d bounding box of matched objects:
+				bool within_box = false;
+				for (list<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
+				// it->x + width , it->y + height
+					if (j >= it->x && j <= it->x + width && i >= it->y && i <= it->y + height) {
+						within_box = true;
+						break;
+					}
+				}
+				if (within_box) {
+					cv::Vec3b color = rgb.at<cv::Vec3b>(i, j);
+					cv::Point2d p_2d;
+					p_2d.x = j;
+					p_2d.y = i;
+
+					cv::Point3d p_3d = cam_model.projectPixelTo3dRay(p_2d);
+
+					PointC pcl_point;
+
+					pcl_point.x = p_3d.x * dist;
+					pcl_point.y = p_3d.y * dist;
+					pcl_point.z = p_3d.z * dist;
+
+					// bgr
+					pcl_point.b = static_cast<uint8_t> (color[0]);
+					pcl_point.g = static_cast<uint8_t> (color[1]);
+					pcl_point.r = static_cast<uint8_t> (color[2]);
+
+					cloud->points.push_back(pcl_point);	
+				}
+			}		
+		}
+	} 
+
+	cloud->width = (int) cloud->points.size();
+	cloud->height = 1;
+
+	return true;
+}
+
+bool Matcher::match(const Mat& scene, std::list<Point>& lst, int* width, int* height) {
 	
 	int counter = count_times;
 
 	printf("---trial origin---\n");
-	double unscaled_value = match(scene, templ, lst);
+	double unscaled_value = exact_match(scene, templ, lst);
 
 	// success without rescaling
 	if (unscaled_value > raw_match_limit) {
@@ -40,7 +127,7 @@ bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
 	// scale down
 	printf("---trial downsize 1---\n");
 	resize(templ, scaled_templ, Size(), factor, factor, INTER_AREA);
-	value = match(scene, scaled_templ, lst);
+	value = exact_match(scene, scaled_templ, lst);
 
 	if (value > raw_match_limit) {
 		*width = x_dist;
@@ -55,7 +142,7 @@ bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
 			counter--;
 			printf("---trial downsize %d---\n", count_times - counter);
 			resize(templ, scaled_templ, Size(), factor, factor, INTER_AREA);
-			value = match(scene, scaled_templ, lst);
+			value = exact_match(scene, scaled_templ, lst);
 
 			if (value > raw_match_limit) {
 				*width = x_dist;
@@ -71,7 +158,7 @@ bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
 		    counter--;
 		    printf("---trial upsize %d---\n", count_times - counter);
 		    resize(templ, scaled_templ, Size(), factor, factor, INTER_LINEAR);
-		    value = match(scene, scaled_templ, lst);
+		    value = exact_match(scene, scaled_templ, lst);
 
 		    if (value > raw_match_limit) {
 				*width = x_dist;
@@ -85,7 +172,7 @@ bool Matcher::scale_match(const cv::Mat& scene, const cv::Mat& templ,
 }
 
 // performs a single match on the given scene & templ, returns the max match_score	
-double Matcher::match(const Mat& scene, const Mat& templ, list<cv::Point>& matching) {
+double Matcher::exact_match(const Mat& scene, const Mat& templ, list<Point>& matching) {
 
 	x_dist = (int) templ.cols;
 	y_dist = (int) templ.rows;
@@ -145,7 +232,7 @@ double Matcher::match(const Mat& scene, const Mat& templ, list<cv::Point>& match
 }
 
 // checks whether point(x, y) is around any point p in the list, returns such p if found
-bool Matcher::around_points(int x, int y, list<cv::Point>& matching, Point** p_ptr_ptr) {
+bool Matcher::around_points(int x, int y, list<Point>& matching, Point** p_ptr_ptr) {
 	if (matching.empty())
 		return false;
 

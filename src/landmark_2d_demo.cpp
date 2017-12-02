@@ -64,7 +64,8 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
     list<Point> lst;
     int width;
     int height;
-    bool result = matcher.scale_match(cv_ptr->image, templ, lst, &width, &height);
+    matcher.set_template(templ);
+    bool result = matcher.match(cv_ptr->image, lst, &width, &height);
 
     if (result) {
       custom_landmark_2d::Point point;

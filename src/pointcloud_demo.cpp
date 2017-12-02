@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "ros/ros.h"
+#include <ros/ros.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -9,11 +9,14 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <cv_bridge/cv_bridge.h>
-#include "pcl_conversions/pcl_conversions.h"
-#include "tf/transform_listener.h"
-#include "pcl_ros/transforms.h"
+#include <pcl_conversions/pcl_conversions.h>
+#include <tf/transform_listener.h>
+#include <pcl_ros/transforms.h>
 
-#include "custom_landmark_2d/rgbd_pointcloud.h"
+#include <custom_landmark_2d/matcher.h>
+// #include <custom_landmark_2d/rgbd_pointcloud.h>
+#include <opencv2/opencv.hpp>
+
 
 
 typedef pcl::PointXYZRGB PointC;
@@ -22,15 +25,12 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 using namespace sensor_msgs;
 using namespace message_filters;
 
+cv::Mat templ;
+sensor_msgs::CameraInfoConstPtr camera_info;
+tf::StampedTransform* transf;
+
 void callback(const ImageConstPtr& rgb, const ImageConstPtr& depth, ros::Publisher& cloud_pub) {
   ROS_INFO("received 2 images");
-
-  // fetch CameraInfo
-  sensor_msgs::CameraInfoConstPtr camera_info =
-      ros::topic::waitForMessage<sensor_msgs::CameraInfo>(
-          "/head_camera/rgb/camera_info");
-
-  ROS_INFO("received camear_info");  
 
   ROS_INFO("depth encoding: %s\n", depth->encoding.c_str()); 
 
@@ -51,20 +51,72 @@ void callback(const ImageConstPtr& rgb, const ImageConstPtr& depth, ros::Publish
   // cv::convertScaleAbs(depth_ptr->image, depth_16uc1, 100, 0.0);
 
 
-  custom_landmark_2d::RgbdPointCloud rgbd_pointcloud(camera_info);
-  PointCloudC::Ptr pcl_cloud = rgbd_pointcloud.to_pointcloud(rgb_ptr->image, depth_ptr->image);
+  // custom_landmark_2d::RgbdPointCloud rgbd_pointcloud(camera_info);
+  custom_landmark_2d::Matcher matcher;
+  matcher.set_template(templ);
+  matcher.set_camera_info(camera_info);
+  matcher.match_limit = 0.83;
+
+  PointCloudC::Ptr pcl_cloud(new PointCloudC());
+
+  if ( !matcher.match_pointcloud(rgb_ptr->image, depth_ptr->image, pcl_cloud) )
+    return; // pcl_cloud construction failed
+
+  ROS_INFO("pcl cloud size: %lu\n", pcl_cloud->size());  
 
   sensor_msgs::PointCloud2 ros_cloud;
   pcl::toROSMsg(*pcl_cloud, ros_cloud);
   ros_cloud.header.frame_id = camera_info->header.frame_id; // head_camera_rgb_optical_frame
 
+  // tf::TransformListener tf_listener;
+  // tf_listener.waitForTransform("base_link", ros_cloud.header.frame_id,
+  //                              ros::Time(0), ros::Duration(5.0));
+  // tf::StampedTransform transform;
+
+  // try {     
+  //   tf_listener.lookupTransform("base_link", ros_cloud.header.frame_id,
+  //                               ros::Time(0), transform);
+  // } catch (tf::LookupException& e) {
+  //   std::cerr << e.what() << std::endl;
+  //   ros::shutdown(); 
+  // } catch (tf::ExtrapolationException& e) {
+  //   std::cerr << e.what() << std::endl;
+  //   ros::shutdown(); 
+  // }
+
+  sensor_msgs::PointCloud2 cloud_out;
+  // Transform a sensor_msgs::PointCloud2 dataset from its frame to a given TF target frame. 
+  pcl_ros::transformPointCloud("base_link", *transf, ros_cloud, cloud_out);
+
+  cloud_pub.publish(cloud_out);
+
+}
+
+int main(int argc, char** argv) {
+
+  // Load template from stdin
+  templ = cv::imread( argv[1], 1 );
+
+  if ( !templ.data ) {
+      printf("No template data \n");
+      return -1;
+  }
+
+  ros::init(argc, argv, "pointcloud_demo");
+
+  // fetch CameraInfo
+  camera_info =
+      ros::topic::waitForMessage<sensor_msgs::CameraInfo>(
+          "/head_camera/rgb/camera_info");
+
   tf::TransformListener tf_listener;
-  tf_listener.waitForTransform("base_link", ros_cloud.header.frame_id,
+  tf_listener.waitForTransform("base_link", "head_camera_rgb_optical_frame",
                                ros::Time(0), ros::Duration(5.0));
   tf::StampedTransform transform;
+  transf = &transform;
 
   try {     
-    tf_listener.lookupTransform("base_link", ros_cloud.header.frame_id,
+    tf_listener.lookupTransform("base_link", "head_camera_rgb_optical_frame",
                                 ros::Time(0), transform);
   } catch (tf::LookupException& e) {
     std::cerr << e.what() << std::endl;
@@ -74,18 +126,7 @@ void callback(const ImageConstPtr& rgb, const ImageConstPtr& depth, ros::Publish
     ros::shutdown(); 
   }
 
-  sensor_msgs::PointCloud2 cloud_out;
-  // Transform a sensor_msgs::PointCloud2 dataset from its frame to a given TF target frame. 
-  pcl_ros::transformPointCloud("base_link", transform, ros_cloud, cloud_out);
-
-  cloud_pub.publish(ros_cloud);
-
-  ros::shutdown(); 
-}
-
-int main(int argc, char** argv) {
-
-  ros::init(argc, argv, "pointcloud_demo");
+  ROS_INFO("received camear_info");  
 
   ros::NodeHandle nh;  
 

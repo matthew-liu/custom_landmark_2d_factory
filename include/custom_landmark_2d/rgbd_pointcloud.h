@@ -10,7 +10,8 @@ class RgbdPointCloud {
 
 	public:
 		RgbdPointCloud(const sensor_msgs::CameraInfoConstPtr& camera_info);
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr to_pointcloud(const cv::Mat& rgb, const cv::Mat& depth);
+		bool to_pointcloud(const cv::Mat& rgb, const cv::Mat& depth, 
+						   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud);
 
 	private:
 		image_geometry::PinholeCameraModel cam_model;
