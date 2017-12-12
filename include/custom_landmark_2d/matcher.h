@@ -19,10 +19,15 @@ class Matcher {
       void set_camera_info(const sensor_msgs::CameraInfoConstPtr& camera_info);
       // returns a vector of cv::Point that defines the upper-left corner of the 2-d bounding box
       // of matched templates in the scene, together with the width & height of the box.
-      bool match(const cv::Mat& scene, std::list<cv::Point>& lst, int* width, int* height);
+      bool match(const cv::Mat& scene, std::vector<cv::Point>& lst, int* width, int* height);
 
+      // output all the matched object points to a single point cloud
       bool match_pointcloud(const cv::Mat& rgb, const cv::Mat& depth, 
                             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud);
+
+      // output each matched object as a single point cloud, in a vector of point cloud pointers
+      bool match_pointclouds(const cv::Mat& rgb, const cv::Mat& depth, 
+                             std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& object_clouds);
 
   private:
       int match_method;
@@ -31,11 +36,11 @@ class Matcher {
       image_geometry::PinholeCameraModel cam_model;
 
       // performs a single match on the given scene & templ, returns the max match_score	
-      double exact_match(const cv::Mat& scene, const cv::Mat& templ, std::list<cv::Point>& matching);
+      double exact_match(const cv::Mat& scene, const cv::Mat& templ, std::vector<cv::Point>& matching);
       // checks whether point(x, y) is around point p
       bool around_point(int x, int y, cv::Point& p);
-      // checks whether point(x, y) is around any point p in the list, returns such p if found
-      bool around_points(int x, int y, std::list<cv::Point>& matching, cv::Point** p_ptr_ptr);
+      // checks whether point(x, y) is around any point p in the vector, returns such p if found
+      bool around_points(int x, int y, std::vector<cv::Point>& matching, cv::Point** p_ptr_ptr);
 };
 
 }  // namespace custom_landmark_2d

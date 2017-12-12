@@ -61,7 +61,7 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
     }
 
     // run matching on the image
-    list<Point> lst;
+    vector<Point> lst;
     int width;
     int height;
     matcher.set_template(templ);
@@ -69,8 +69,8 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
 
     if (result) {
       custom_landmark_2d::Point point;
-      // loop through the list
-      for (list<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
+      // loop through the vector
+      for (vector<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
         point.x = it->x;
         point.y = it->y;
         point.width = width;
