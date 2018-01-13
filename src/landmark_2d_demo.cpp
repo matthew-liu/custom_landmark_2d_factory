@@ -61,27 +61,24 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
     }
 
     // run matching on the image
-    vector<Point> lst;
-    int width;
-    int height;
+    vector<custom_landmark_2d::Frame> lst;
+
     matcher.set_template(templ);
-    bool result = matcher.match(cv_ptr->image, lst, &width, &height);
+    bool result = matcher.match(cv_ptr->image, lst);
 
     if (result) {
-      custom_landmark_2d::Point point;
+
+      printf("--------------\nMatched Points Info:\n\n");
+
       // loop through the vector
-      for (vector<Point>::iterator it = lst.begin(); it != lst.end(); it++) {
-        point.x = it->x;
-        point.y = it->y;
-        point.width = width;
-        point.height = height;
-        points_pub->publish(point);
+      for (vector<custom_landmark_2d::Frame>::iterator it = lst.begin(); it != lst.end(); it++) {
         // annotates matched parts on scene
-        rectangle( cv_ptr->image, *it, Point( it->x + width , it->y + height ), Scalar(255, 255, 0), 5, 8, 0 );
+        rectangle( cv_ptr->image, it->p1, it->p2, Scalar(255, 255, 0), 5, 8, 0 );
+        
+        printf("point intensity: %f, position: %d, %d\n", it->score, it->p1.x, it->p1.y);
       }
     }
     
-
     pub->publish(cv_ptr->toImageMsg());
   }
 }
