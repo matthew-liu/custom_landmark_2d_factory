@@ -68,14 +68,14 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
 
     if (result) {
 
-      printf("--------------\nMatched Points Info:\n\n");
+      ROS_INFO("--------------\nMatched Points Info:\n\n");
 
       // loop through the vector
       for (vector<custom_landmark_2d::Frame>::iterator it = lst.begin(); it != lst.end(); it++) {
         // annotates matched parts on scene
         rectangle( cv_ptr->image, it->p1, it->p2, Scalar(255, 255, 0), 5, 8, 0 );
         
-        printf("point intensity: %f, position: %d, %d\n", it->score, it->p1.x, it->p1.y);
+        ROS_INFO("point intensity: %f, position: [%d, %d]\n", it->score, it->p1.x, it->p1.y);
       }
     }
     

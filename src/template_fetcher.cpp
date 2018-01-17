@@ -19,7 +19,7 @@ int main( int argc, char** argv ) {
   ros::Subscriber sub = n.subscribe("/head_camera/rgb/image_raw", 5, fetcher);
 
 
-   ros::spin();
+  ros::spin();
 
 
   return 0;
@@ -38,6 +38,8 @@ void fetcher(const sensor_msgs::Image::ConstPtr& msg) {
     }
 
     imwrite("template.jpg", cv_ptr->image);
-    ROS_INFO("image captured successfully");
+    ROS_INFO("image captured successfully, shutting down...");
+    
+    ros::shutdown();
   }
 }
