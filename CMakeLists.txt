@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
-  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -52,10 +51,9 @@ find_package( OpenCV REQUIRED )
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Point.msg
-)
+# add_message_files(
+#  FILES
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -72,10 +70,10 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+# generate_messages(
+#  DEPENDENCIES
+#  std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -112,6 +110,7 @@ catkin_package(
   LIBRARIES 
     matcher_2d
     rgbd_pointcloud
+    demor
     
 # CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
 # DEPENDS system_lib
@@ -208,6 +207,14 @@ add_library(rgbd_pointcloud src/rgbd_pointcloud.cpp)
 add_dependencies(rgbd_pointcloud ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(rgbd_pointcloud ${catkin_LIBRARIES})
 
+add_library(demor src/demor.cpp)
+add_dependencies(demor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+    demor 
+    matcher_2d 
+    ${catkin_LIBRARIES}
+)
+
 add_executable(landmark_2d_demo src/landmark_2d_demo.cpp)
 target_link_libraries(landmark_2d_demo
   matcher_2d
@@ -229,5 +236,12 @@ add_dependencies(pointcloud_demo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 target_link_libraries(pointcloud_demo
    matcher_2d
    rgbd_pointcloud
+   ${catkin_LIBRARIES}
+)
+
+add_executable(demo src/demo.cpp)
+add_dependencies(demo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(demo
+   demor
    ${catkin_LIBRARIES}
 )

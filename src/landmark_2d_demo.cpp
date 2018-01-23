@@ -33,11 +33,7 @@ int main( int argc, char** argv ) {
   ros::Publisher pub_instance = n.advertise<sensor_msgs::Image>("image_output", 1000);
   pub = &pub_instance;
 
-  ros::Publisher points_pub_instance = n.advertise<custom_landmark_2d::Point>("points_output", 1000);
-  points_pub = &points_pub_instance;
-
-
-  ros::Subscriber sub = n.subscribe("/head_camera/rgb/image_raw", 5, demo);
+  ros::Subscriber sub = n.subscribe("scene", 5, demo); // scene:=/head_camera/rgb/image_raw
 
 
   ros::spin();
@@ -69,6 +65,7 @@ void demo(const sensor_msgs::Image::ConstPtr& msg) {
     if (result) {
 
       ROS_INFO("--------------\nMatched Points Info:\n\n");
+      ROS_INFO("#matched objects: %lu\n", lst.size()); 
 
       // loop through the vector
       for (vector<custom_landmark_2d::Frame>::iterator it = lst.begin(); it != lst.end(); it++) {

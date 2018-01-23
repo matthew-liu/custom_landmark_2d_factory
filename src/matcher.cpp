@@ -28,13 +28,13 @@ void Matcher::set_template(const Mat& templ) {
 	this->templ = templ;
 }
 
-void Matcher::set_camera_info(const sensor_msgs::CameraInfoConstPtr& camera_info) {
+void Matcher::set_camera_model(const sensor_msgs::CameraInfoConstPtr& camera_info) {
 	cam_model.fromCameraInfo(camera_info);
 }
 
 bool Matcher::match_pointclouds(const Mat& rgb, const Mat& depth, vector<PointCloudC::Ptr>& object_clouds) {
 
-	printf("CameraInfo frame: %s\n", cam_model.tfFrame().c_str());
+	// printf("CameraInfo frame: %s\n", cam_model.tfFrame().c_str());
 
 	if (rgb.cols != depth.cols || rgb.rows != depth.rows) {
 		return false;
@@ -54,6 +54,7 @@ bool Matcher::match_pointclouds(const Mat& rgb, const Mat& depth, vector<PointCl
 				// check if within any 2-d bounding box of matched objects:
 				bool within_box = false;
 				int c_index = -1;
+
 				for (int k = 0; k < lst.size(); k++) {
 					Frame* f = &lst[k];
 					if (j >= f->p1.x && j <= f->p2.x && i >= f->p1.y && i <= f->p2.y) {
@@ -62,6 +63,7 @@ bool Matcher::match_pointclouds(const Mat& rgb, const Mat& depth, vector<PointCl
 						break;
 					}
 				}
+
 				if (within_box) {
 					cv::Vec3b color = rgb.at<cv::Vec3b>(i, j);
 					cv::Point2d p_2d;

@@ -1,6 +1,3 @@
-#include <iostream>
-#include <string>
-
 #include <ros/ros.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
@@ -17,7 +14,7 @@
 // #include <custom_landmark_2d/rgbd_pointcloud.h>
 #include <opencv2/opencv.hpp>
 
-
+#include <time.h>
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
@@ -34,61 +31,63 @@ void callback(const ImageConstPtr& rgb, const ImageConstPtr& depth, ros::Publish
 
   ROS_INFO("depth encoding: %s\n", depth->encoding.c_str()); 
 
-  // // convert sensor_msgs::Images to cv::Mats
-  // cv_bridge::CvImagePtr rgb_ptr;
-  // cv_bridge::CvImagePtr depth_ptr;
+  // convert sensor_msgs::Images to cv::Mats
+  cv_bridge::CvImagePtr rgb_ptr;
+  cv_bridge::CvImagePtr depth_ptr;
 
-  // try {
-  //   rgb_ptr = cv_bridge::toCvCopy(rgb, sensor_msgs::image_encodings::BGR8);
-  //   depth_ptr = cv_bridge::toCvCopy(depth); // 32FC1
-  // } 
-  // catch (cv_bridge::Exception& e) {
-  //   ROS_ERROR("cv_bridge exception: %s", e.what());
-  //   ros::shutdown(); 
-  // }
+  try {
+    rgb_ptr = cv_bridge::toCvCopy(rgb, sensor_msgs::image_encodings::BGR8);
+    depth_ptr = cv_bridge::toCvCopy(depth); // 32FC1
+  } 
+  catch (cv_bridge::Exception& e) {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    ros::shutdown(); 
+  }
 
-  // // cv::Mat depth_16uc1 = cv::Mat(depth_ptr->image.size(), CV_16UC1);
-  // // cv::convertScaleAbs(depth_ptr->image, depth_16uc1, 100, 0.0);
+  // cv::Mat depth_16uc1 = cv::Mat(depth_ptr->image.size(), CV_16UC1);
+  // cv::convertScaleAbs(depth_ptr->image, depth_16uc1, 100, 0.0);
 
 
-  // // custom_landmark_2d::RgbdPointCloud rgbd_pointcloud(camera_info);
-  // custom_landmark_2d::Matcher matcher;
-  // matcher.set_template(templ);
-  // matcher.set_camera_info(camera_info);
-  // matcher.match_limit = 0.83;
+  // custom_landmark_2d::RgbdPointCloud rgbd_pointcloud(camera_info);
+  custom_landmark_2d::Matcher matcher;
+  matcher.set_template(templ);
+  matcher.set_camera_model(camera_info);
 
-  // PointCloudC::Ptr pcl_cloud(new PointCloudC());
 
-  // if ( !matcher.match_pointcloud(rgb_ptr->image, depth_ptr->image, pcl_cloud) )
-  //   return; // pcl_cloud construction failed
+  std::vector<PointCloudC::Ptr> object_clouds;
 
-  // ROS_INFO("pcl cloud size: %lu\n", pcl_cloud->size());  
+  float start_tick = clock();
 
-  // sensor_msgs::PointCloud2 ros_cloud;
-  // pcl::toROSMsg(*pcl_cloud, ros_cloud);
-  // ros_cloud.header.frame_id = camera_info->header.frame_id; // head_camera_rgb_optical_frame
+  if ( !matcher.match_pointclouds(rgb_ptr->image, depth_ptr->image, object_clouds) )
+    return; // pcl_cloud construction failed
 
-  // // tf::TransformListener tf_listener;
-  // // tf_listener.waitForTransform("base_link", ros_cloud.header.frame_id,
-  // //                              ros::Time(0), ros::Duration(5.0));
-  // // tf::StampedTransform transform;
+  float end_tick = clock();
 
-  // // try {     
-  // //   tf_listener.lookupTransform("base_link", ros_cloud.header.frame_id,
-  // //                               ros::Time(0), transform);
-  // // } catch (tf::LookupException& e) {
-  // //   std::cerr << e.what() << std::endl;
-  // //   ros::shutdown(); 
-  // // } catch (tf::ExtrapolationException& e) {
-  // //   std::cerr << e.what() << std::endl;
-  // //   ros::shutdown(); 
-  // // }
+  ROS_INFO("runtime: %f\n", (end_tick - start_tick) / CLOCKS_PER_SEC); 
 
-  // sensor_msgs::PointCloud2 cloud_out;
-  // // Transform a sensor_msgs::PointCloud2 dataset from its frame to a given TF target frame. 
-  // pcl_ros::transformPointCloud("base_link", *transf, ros_cloud, cloud_out);
+  PointCloudC::Ptr pcl_cloud(new PointCloudC());
 
-  // cloud_pub.publish(cloud_out);
+  ROS_INFO("#objects: %lu\n", object_clouds.size()); 
+
+  long sum_size = 0;
+
+  for (std::vector<PointCloudC::Ptr>::iterator it = object_clouds.begin(); it != object_clouds.end(); it++) {
+    *pcl_cloud += **it;
+    sum_size += (*it)->size();
+  }
+
+  ROS_INFO("total size: %lu\n", sum_size);  
+  ROS_INFO("pcl cloud size: %lu\n", pcl_cloud->size());  
+
+  sensor_msgs::PointCloud2 ros_cloud;
+  pcl::toROSMsg(*pcl_cloud, ros_cloud);
+  ros_cloud.header.frame_id = camera_info->header.frame_id; // head_camera_rgb_optical_frame
+
+  sensor_msgs::PointCloud2 cloud_out;
+  // Transform a sensor_msgs::PointCloud2 dataset from its frame to a given TF target frame. 
+  pcl_ros::transformPointCloud("base_link", *transf, ros_cloud, cloud_out);
+
+  cloud_pub.publish(cloud_out);
 
 }
 
@@ -103,11 +102,16 @@ int main(int argc, char** argv) {
   }
 
   ros::init(argc, argv, "pointcloud_demo");
+  ros::NodeHandle nh;  
+
+  ROS_INFO("start..."); 
 
   // fetch CameraInfo
   camera_info =
       ros::topic::waitForMessage<sensor_msgs::CameraInfo>(
           "/head_camera/rgb/camera_info");
+
+  ROS_INFO("received camear_info");  
 
   tf::TransformListener tf_listener;
   tf_listener.waitForTransform("base_link", "head_camera_rgb_optical_frame",
@@ -120,15 +124,13 @@ int main(int argc, char** argv) {
                                 ros::Time(0), transform);
   } catch (tf::LookupException& e) {
     std::cerr << e.what() << std::endl;
+    ROS_INFO("e1....?");
     ros::shutdown(); 
   } catch (tf::ExtrapolationException& e) {
     std::cerr << e.what() << std::endl;
+    ROS_INFO("e2....?");
     ros::shutdown(); 
   }
-
-  ROS_INFO("received camear_info");  
-
-  ros::NodeHandle nh;  
 
   ros::Publisher cloud_pub =
     nh.advertise<sensor_msgs::PointCloud2>("generated_cloud", 1, true);

@@ -27,7 +27,7 @@ class Matcher {
       Matcher();
 
       void set_template(const cv::Mat& templ);
-      void set_camera_info(const sensor_msgs::CameraInfoConstPtr& camera_info);
+      void set_camera_model(const sensor_msgs::CameraInfoConstPtr& camera_info);
 
       // takes in an output parameter that contains all frames of matched objects in the scene;
       // returns true if there is at least one matched frame, and false otherwise.
